@@ -51,22 +51,31 @@ class FitDistributions:
                 except Exception as e:
                     continue
 
-            self._plot(x, data, best_distribution.name, best_params)
+            self._plot(data, best_distribution.name, best_params)
             return best_distribution.name, best_params
 
         if self.type == 'discrete':
             return data / np.sum(data)
 
-    def _plot(self, x, data, dist_name, params):
+    def _plot(self, data, dist_name, params, size=10000):
         dist = getattr(st, dist_name)
-        pdf = dist.pdf(
-            x, loc=params[-2], scale=params[-1], *params[:-2])
-        plt.hist(data, bins=self.bins, normed=1)
-        plt.plot(pdf, label=dist_name)
+        arg = params[:-2]
+        loc = params[-2]
+        scale = params[-1]
+
+        start = dist.ppf(0.01, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.01, loc=loc, scale=scale)
+        end = dist.ppf(0.99, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.99, loc=loc, scale=scale)
+        x = np.linspace(start, end, size)
+        y = dist.pdf(x, loc=loc, scale=scale, *arg)
+        pdf = pd.Series(y, x)
+
+        plt.plot(x, y)
+        plt.hist(data, normed=1, bins=self.bins)
         plt.show()
 
-data = np.random.normal(1000, 500, 5000)
-DF = FitDistributions()
-a, b = DF.fit_distribution(data)
+if __name__ == '__main__':
+    data = np.random.normal(1000, 500, 10000)
+    DF = FitDistributions()
+    dist_name, params = DF.fit_distribution(data)
 
 #https://stackoverflow.com/a/37616966
