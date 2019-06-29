@@ -5,6 +5,9 @@ Inspired and adapted from: https://stackoverflow.com/a/37616966
 
 ## Usage
 ```
+import scipy.stats as st
+from fit_distribution import FitDistributions
+
 data = st.norm.rvs(1, 2, size=5000)
 DF = FitDistributions(plot_all = True)
 DF.distributions = [st.norm, st.maxwell, st.uniform]
