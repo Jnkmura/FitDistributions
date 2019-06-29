@@ -4,12 +4,17 @@ import scipy.stats as st
 import scipy
 import statsmodels as sm
 import matplotlib.pyplot as plt
+import warnings
 from tqdm import tqdm
 
 class FitDistributions:
 
-    def __init__(self, type = 'continuous'):
+    def __init__(self, type = 'continuous', plot_all = False):
+        warnings.filterwarnings('ignore')
         self.type = type
+        self.plot_all = plot_all
+        self.results = {}
+
         if self.type == 'continuous':
             self.distributions = [        
                     st.alpha,st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
@@ -24,8 +29,11 @@ class FitDistributions:
                     st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
                 ]
 
-    def fit_distribution(self, data, bins=200):
+    def fit_distribution(self, data, bins=None):
         self.bins = bins
+        if self.bins is None:
+            self.bins = np.histogram_bin_edges(data)
+       
         if self.type == 'continuous':
             y, x = np.histogram(data, bins=self.bins, density=True)
             x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -37,11 +45,10 @@ class FitDistributions:
             for d in tqdm(self.distributions):
                 try:
                     params = d.fit(data)
-                    arg = params[:-2]
-                    loc = params[-2]
-                    scale = params[-1]
-                    pdf = d.pdf(x, loc=loc, scale=scale, *arg)
-                    sse = np.sum(np.power(y - pdf, 2.0))
+                    pdf = d.pdf(
+                        x, loc=params[-2], scale=params[-1], *params[:-2])
+                    sse = np.sum((y - pdf)**2)
+                    self.results[d.name] = {'params': params, 'sse': sse}
 
                     if best_sse > sse > 0:
                         best_distribution = d
@@ -58,24 +65,28 @@ class FitDistributions:
             return data / np.sum(data)
 
     def _plot(self, data, dist_name, params, size=10000):
-        dist = getattr(st, dist_name)
-        arg = params[:-2]
-        loc = params[-2]
-        scale = params[-1]
-
-        start = dist.ppf(0.01, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.01, loc=loc, scale=scale)
-        end = dist.ppf(0.99, *arg, loc=loc, scale=scale) if arg else dist.ppf(0.99, loc=loc, scale=scale)
-        x = np.linspace(start, end, size)
-        y = dist.pdf(x, loc=loc, scale=scale, *arg)
-        pdf = pd.Series(y, x)
-
-        plt.plot(x, y)
         plt.hist(data, normed=1, bins=self.bins)
+        x = np.linspace(np.min(data), np.max(data), size)
+        plt.title('Fitted Data')
+
+        if self.plot_all:
+            for dist in self.distributions:
+                params = self.results[dist.name]['params']
+                y = dist.pdf(x, loc=params[-2], scale=params[-1], *params[:-2])
+                plt.plot(x, y, label=dist.name)
+                del y
+        else:
+            dist = getattr(st, dist_name)
+            y = dist.pdf(x, loc=params[-2], scale=params[-1], *params[:-2])
+            plt.plot(x, y, label=dist.name)
+        
+        plt.legend(loc='upper right')
         plt.show()
 
-if __name__ == '__main__':
-    data = np.random.normal(1000, 500, 10000)
-    DF = FitDistributions()
-    dist_name, params = DF.fit_distribution(data)
 
-#https://stackoverflow.com/a/37616966
+if __name__ == '__main__':
+    data = st.norm.rvs(1, 2, size=5000)
+    DF = FitDistributions(plot_all = True)
+    DF.distributions = [st.norm, st.maxwell, st.uniform]
+    dist_name, params = DF.fit_distribution(data, bins = 100)
+    print(dist_name, params)
