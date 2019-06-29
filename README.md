@@ -1,6 +1,6 @@
 # FitDistributions
 
-Fit continuous data with 89 different distributions (scipy.stats) to find which one fit the best.
+Fit continuous data with 89 different distributions (scipy.stats) to find which one fit the best.\
 Inspired and adapted from: https://stackoverflow.com/a/37616966 
 
 ## Usage
