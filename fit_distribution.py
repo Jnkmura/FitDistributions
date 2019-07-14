@@ -83,6 +83,10 @@ class FitDistributions:
         plt.legend(loc='upper right')
         plt.show()
 
+    def generate_rvs(self, size, dist_name, params):
+        d = getattr(st, dist_name)
+        return d.rvs(loc=params[-2], scale=params[-1], *params[:-2], size = size)
+
 
 if __name__ == '__main__':
     data = st.norm.rvs(1, 2, size=5000)
